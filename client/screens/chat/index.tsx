@@ -175,11 +175,7 @@ export default function ChatScreen() {
       sseRef.current.addEventListener('message', (event) => {
         if (event.data === '[DONE]') {
           setIsLoading(false);
-          // 消息接收完成后，生成 TTS
-          const currentIndex = messages.length + 1; // 刚添加的空消息索引
-          if (fullContent) {
-            playTTS(fullContent, currentIndex);
-          }
+          // 消息接收完成，不自动播放，等待用户点击
           return;
         }
 

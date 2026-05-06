@@ -6,117 +6,142 @@ interface CubeAvatarProps {
   isSpeaking?: boolean;
 }
 
-// 卡通正方体小人组件
+// 卡通黄色正方体小人组件 - 小方
 export function CubeAvatar({ size = 48, isSpeaking = false }: CubeAvatarProps) {
-  const innerSize = size * 0.75;
-  const eyeSize = size * 0.08;
-  const mouthWidth = size * 0.15;
-  const mouthHeight = size * 0.06;
+  const innerSize = size * 0.8;
+  const eyeSize = size * 0.12;
+  const pupilSize = eyeSize * 0.6;
+  const mouthWidth = size * 0.2;
+  const mouthHeight = size * 0.12;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {/* 外层发光效果 */}
-      <View style={[
-        styles.glowOuter,
-        {
-          width: size,
-          height: size,
-          borderRadius: size * 0.25,
-          backgroundColor: isSpeaking ? 'rgba(108, 99, 255, 0.3)' : 'transparent',
-        }
-      ]} />
+      {/* 外层光晕（说话时发光） */}
+      {isSpeaking && (
+        <View style={[
+          styles.glowRing,
+          { width: size * 1.3, height: size * 1.3, borderRadius: size * 0.65 }
+        ]} />
+      )}
 
-      {/* 正方体主体 */}
+      {/* 正方体主体 - 圆润的黄色身体 */}
       <View style={[
         styles.cubeBody,
         {
           width: innerSize,
           height: innerSize,
-          borderRadius: innerSize * 0.2,
-          backgroundColor: '#6C63FF',
+          borderRadius: innerSize * 0.25,
+          backgroundColor: '#FFD93D',
         }
       ]}>
-        {/* 高光 */}
+        {/* 顶部头发装饰 - 几根呆毛 */}
+        <View style={[styles.hair1, { left: innerSize * 0.3, top: -innerSize * 0.05 }]} />
+        <View style={[styles.hair2, { left: innerSize * 0.45, top: -innerSize * 0.08 }]} />
+        <View style={[styles.hair3, { left: innerSize * 0.6, top: -innerSize * 0.03 }]} />
+
+        {/* 顶部高光（圆弧形） */}
         <View style={[
-          styles.highlight,
+          styles.topHighlight,
           {
-            width: innerSize * 0.4,
-            height: innerSize * 0.15,
+            width: innerSize * 0.5,
+            height: innerSize * 0.18,
             borderRadius: innerSize * 0.1,
-            top: innerSize * 0.1,
-            left: innerSize * 0.1,
+            top: innerSize * 0.08,
+            left: innerSize * 0.15,
           }
         ]} />
 
-        {/* 左眼 */}
+        {/* 左眼 - 大眼睛 */}
         <View style={[
-          styles.eye,
+          styles.eyeWhite,
           {
             width: eyeSize,
-            height: eyeSize,
-            borderRadius: eyeSize,
-            backgroundColor: '#FFFFFF',
-            left: innerSize * 0.25,
-            top: innerSize * 0.35,
+            height: eyeSize * 1.2,
+            borderRadius: eyeSize * 0.6,
+            left: innerSize * 0.2,
+            top: innerSize * 0.32,
           }
         ]}>
+          {/* 瞳孔 */}
           <View style={[
             styles.pupil,
             {
-              width: eyeSize * 0.5,
-              height: eyeSize * 0.5,
-              borderRadius: eyeSize * 0.25,
+              width: pupilSize,
+              height: pupilSize * 1.1,
+              borderRadius: pupilSize * 0.55,
               backgroundColor: '#2D3436',
             }
           ]} />
+          {/* 眼神光 */}
+          <View style={[
+            styles.eyeShine,
+            { width: pupilSize * 0.35, height: pupilSize * 0.35, borderRadius: pupilSize * 0.175 }
+          ]} />
         </View>
 
-        {/* 右眼 */}
+        {/* 右眼 - 大眼睛 */}
         <View style={[
-          styles.eye,
+          styles.eyeWhite,
           {
             width: eyeSize,
-            height: eyeSize,
-            borderRadius: eyeSize,
-            backgroundColor: '#FFFFFF',
-            right: innerSize * 0.25,
-            top: innerSize * 0.35,
+            height: eyeSize * 1.2,
+            borderRadius: eyeSize * 0.6,
+            right: innerSize * 0.2,
+            top: innerSize * 0.32,
           }
         ]}>
+          {/* 瞳孔 */}
           <View style={[
             styles.pupil,
             {
-              width: eyeSize * 0.5,
-              height: eyeSize * 0.5,
-              borderRadius: eyeSize * 0.25,
+              width: pupilSize,
+              height: pupilSize * 1.1,
+              borderRadius: pupilSize * 0.55,
               backgroundColor: '#2D3436',
             }
           ]} />
+          {/* 眼神光 */}
+          <View style={[
+            styles.eyeShine,
+            { width: pupilSize * 0.35, height: pupilSize * 0.35, borderRadius: pupilSize * 0.175 }
+          ]} />
         </View>
 
-        {/* 嘴巴 - 微笑 */}
+        {/* 嘴巴 - 可爱的W形状微笑 */}
         <View style={[
           styles.mouth,
           {
             width: mouthWidth,
             height: mouthHeight,
-            borderRadius: mouthHeight,
-            borderBottomWidth: 2,
-            borderBottomColor: '#FFFFFF',
-            bottom: innerSize * 0.2,
+            bottom: innerSize * 0.18,
           }
-        ]} />
+        ]}>
+          {/* 左半边弧 */}
+          <View style={[styles.mouthArc, styles.mouthLeft]} />
+          {/* 右半边弧 */}
+          <View style={[styles.mouthArc, styles.mouthRight]} />
+          {/* 舌头 */}
+          <View style={[
+            styles.tongue,
+            {
+              width: mouthWidth * 0.35,
+              height: mouthHeight * 0.5,
+              borderRadius: mouthHeight * 0.25,
+              bottom: -mouthHeight * 0.1,
+            }
+          ]} />
+        </View>
 
-        {/* 腮红左 */}
+        {/* 腮红左 - 粉粉的 */}
         <View style={[
           styles.blush,
           {
-            width: size * 0.06,
-            height: size * 0.04,
-            borderRadius: size * 0.02,
-            backgroundColor: 'rgba(255, 101, 132, 0.5)',
-            left: innerSize * 0.12,
-            bottom: innerSize * 0.32,
+            width: size * 0.08,
+            height: size * 0.05,
+            borderRadius: size * 0.04,
+            backgroundColor: '#FFB6C1',
+            left: innerSize * 0.08,
+            bottom: innerSize * 0.28,
           }
         ]} />
 
@@ -124,19 +149,30 @@ export function CubeAvatar({ size = 48, isSpeaking = false }: CubeAvatarProps) {
         <View style={[
           styles.blush,
           {
-            width: size * 0.06,
-            height: size * 0.04,
-            borderRadius: size * 0.02,
-            backgroundColor: 'rgba(255, 101, 132, 0.5)',
-            right: innerSize * 0.12,
-            bottom: innerSize * 0.32,
+            width: size * 0.08,
+            height: size * 0.05,
+            borderRadius: size * 0.04,
+            backgroundColor: '#FFB6C1',
+            right: innerSize * 0.08,
+            bottom: innerSize * 0.28,
           }
         ]} />
       </View>
 
+      {/* 底部阴影 */}
+      <View style={[
+        styles.shadow,
+        {
+          width: innerSize * 0.7,
+          height: innerSize * 0.1,
+          borderRadius: innerSize * 0.05,
+          bottom: -innerSize * 0.05,
+        }
+      ]} />
+
       {/* 说话时的动画圆点 */}
       {isSpeaking && (
-        <View style={[styles.speakingDots, { bottom: -size * 0.15 }]}>
+        <View style={[styles.speakingDots, { bottom: -size * 0.12 }]}>
           <View style={[styles.dot, styles.dot1]} />
           <View style={[styles.dot, styles.dot2]} />
           <View style={[styles.dot, styles.dot3]} />
@@ -150,7 +186,7 @@ export function CubeAvatar({ size = 48, isSpeaking = false }: CubeAvatarProps) {
 export function BigCubeAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
   return (
     <View style={styles.bigAvatarContainer}>
-      <CubeAvatar size={56} isSpeaking={isSpeaking} />
+      <CubeAvatar size={64} isSpeaking={isSpeaking} />
       {/* 名字标签 */}
       <View style={styles.nameTag}>
         <Text style={styles.nameText}>小方</Text>
@@ -164,51 +200,119 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  glowOuter: {
+  glowRing: {
     position: 'absolute',
+    backgroundColor: 'rgba(255, 217, 61, 0.3)',
   },
   cubeBody: {
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6C63FF',
+    shadowColor: '#E6B800',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
-  highlight: {
+  // 呆毛头发
+  hair1: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 4,
+    height: 10,
+    backgroundColor: '#8B7355',
+    borderRadius: 2,
+    transform: [{ rotate: '-15deg' }],
   },
-  eye: {
+  hair2: {
     position: 'absolute',
+    width: 4,
+    height: 14,
+    backgroundColor: '#8B7355',
+    borderRadius: 2,
+    transform: [{ rotate: '5deg' }],
+  },
+  hair3: {
+    position: 'absolute',
+    width: 4,
+    height: 8,
+    backgroundColor: '#8B7355',
+    borderRadius: 2,
+    transform: [{ rotate: '20deg' }],
+  },
+  topHighlight: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  eyeWhite: {
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   pupil: {
     position: 'absolute',
   },
+  eyeShine: {
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
+    top: 2,
+    right: 2,
+  },
   mouth: {
     position: 'absolute',
-    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  mouthArc: {
+    width: 12,
+    height: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FF6B6B',
+    borderRadius: 0,
+  },
+  mouthLeft: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B6B',
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 0,
+    marginRight: -2,
+  },
+  mouthRight: {
+    borderRightWidth: 3,
+    borderRightColor: '#FF6B6B',
+    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 0,
+    marginLeft: -2,
+  },
+  tongue: {
+    position: 'absolute',
+    backgroundColor: '#FF9999',
   },
   blush: {
     position: 'absolute',
+  },
+  shadow: {
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   speakingDots: {
     position: 'absolute',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#6C63FF',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFD93D',
   },
   dot1: {
     opacity: 0.4,
@@ -223,15 +327,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nameTag: {
-    marginTop: 4,
-    backgroundColor: 'rgba(108, 99, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    marginTop: 6,
+    backgroundColor: 'rgba(255, 217, 61, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 217, 61, 0.5)',
   },
   nameText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B8860B',
+    letterSpacing: 1,
   },
 });

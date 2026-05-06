@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,15 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
 import { Screen } from '@/components/Screen';
 import RNSSE from 'react-native-sse';
+import { CubeAvatar, BigCubeAvatar } from '@/components/CubeAvatar';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  audioUri?: string;
 }
 
 // 初始欢迎消息
@@ -39,27 +42,87 @@ export default function ChatScreen() {
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const backendUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
   const sseRef = useRef<RNSSE | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  // 清理 SSE 连接
+  // 清理资源
   useEffect(() => {
     return () => {
       if (sseRef.current) {
         sseRef.current.close();
       }
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
     };
   }, []);
 
   // 滚动到底部
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (scrollViewRef.current) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  };
+  }, []);
+
+  // 文字转语音并播放
+  const playTTS = useCallback(async (text: string, messageIndex: number) => {
+    if (playingMessageIndex !== null) {
+      return; // 已有音频在播放
+    }
+
+    try {
+      setPlayingMessageIndex(messageIndex);
+      setIsSpeaking(true);
+
+      // 先停止之前的音频
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
+      // 调用 TTS API
+      const response = await fetch(`${backendUrl}/api/v1/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        throw new Error('TTS API error');
+      }
+
+      const { audioUri } = await response.json();
+
+      // 播放音频
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+
+      // 监听播放结束
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingMessageIndex(null);
+          setIsSpeaking(false);
+          sound.unloadAsync();
+          soundRef.current = null;
+        }
+      });
+    } catch (error) {
+      console.error('TTS error:', error);
+      setPlayingMessageIndex(null);
+      setIsSpeaking(false);
+    }
+  }, [backendUrl, playingMessageIndex]);
 
   // 发送消息
   const handleSend = async () => {
@@ -68,6 +131,14 @@ export default function ChatScreen() {
     const userMessage = inputText.trim();
     setInputText('');
     setIsLoading(true);
+
+    // 停止当前播放
+    if (soundRef.current) {
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+      setPlayingMessageIndex(null);
+      setIsSpeaking(false);
+    }
 
     // 添加用户消息
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
@@ -104,6 +175,11 @@ export default function ChatScreen() {
       sseRef.current.addEventListener('message', (event) => {
         if (event.data === '[DONE]') {
           setIsLoading(false);
+          // 消息接收完成后，生成 TTS
+          const currentIndex = messages.length + 1; // 刚添加的空消息索引
+          if (fullContent) {
+            playTTS(fullContent, currentIndex);
+          }
           return;
         }
 
@@ -166,15 +242,18 @@ export default function ChatScreen() {
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarInner}>
-                <Text style={styles.avatarText}>方</Text>
-              </View>
-            </View>
+            <BigCubeAvatar isSpeaking={isSpeaking} />
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>小方老师</Text>
               <Text style={styles.headerSubtitle}>立方王国 · 六年级数学</Text>
             </View>
+            {isSpeaking && (
+              <View style={styles.speakingIndicator}>
+                <View style={styles.waveBar} />
+                <View style={[styles.waveBar, styles.waveBar2]} />
+                <View style={[styles.waveBar, styles.waveBar3]} />
+              </View>
+            )}
           </View>
         </LinearGradient>
       </View>
@@ -200,36 +279,58 @@ export default function ChatScreen() {
               ]}
             >
               {msg.role === 'assistant' && (
-                <View style={styles.assistantAvatar}>
-                  <View style={styles.smallAvatar}>
-                    <Text style={styles.smallAvatarText}>方</Text>
-                  </View>
-                </View>
+                <TouchableOpacity
+                  style={styles.avatarButton}
+                  onPress={() => {
+                    if (msg.content && playingMessageIndex !== index) {
+                      playTTS(msg.content, index);
+                    }
+                  }}
+                >
+                  <CubeAvatar size={36} isSpeaking={playingMessageIndex === index} />
+                </TouchableOpacity>
               )}
-              <View
-                style={[
-                  styles.messageBubble,
-                  msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                ]}
-              >
-                <Text
+              <View style={styles.messageContentWrapper}>
+                <View
                   style={[
-                    styles.messageText,
-                    msg.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
+                    styles.messageBubble,
+                    msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
                   ]}
                 >
-                  {msg.content || (isLoading && index === messages.length - 1 ? '思考中...' : '')}
-                </Text>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      msg.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
+                    ]}
+                  >
+                    {msg.content || (isLoading && index === messages.length - 1 ? '思考中...' : '')}
+                  </Text>
+                </View>
+                {msg.role === 'assistant' && msg.content && (
+                  <TouchableOpacity
+                    style={[
+                      styles.playButton,
+                      playingMessageIndex === index && styles.playButtonActive,
+                    ]}
+                    onPress={() => playTTS(msg.content, index)}
+                    disabled={playingMessageIndex !== null}
+                  >
+                    <Text style={[
+                      styles.playButtonText,
+                      playingMessageIndex === index && styles.playButtonTextActive,
+                    ]}>
+                      {playingMessageIndex === index ? '播放中' : '播放'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))}
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <View style={[styles.messageWrapper, styles.assistantMessageWrapper]}>
-              <View style={styles.assistantAvatar}>
-                <View style={styles.smallAvatar}>
-                  <Text style={styles.smallAvatarText}>方</Text>
-                </View>
-              </View>
+              <TouchableOpacity style={styles.avatarButton}>
+                <CubeAvatar size={36} isSpeaking={true} />
+              </TouchableOpacity>
               <View style={[styles.messageBubble, styles.assistantBubble]}>
                 <ActivityIndicator size="small" color="#6C63FF" />
               </View>
@@ -290,29 +391,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#6C63FF',
-  },
   headerTextContainer: {
     marginLeft: 14,
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
@@ -323,6 +404,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
+  },
+  speakingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 20,
+    gap: 3,
+  },
+  waveBar: {
+    width: 3,
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  waveBar2: {
+    height: 14,
+  },
+  waveBar3: {
+    height: 10,
   },
   chatContainer: {
     flex: 1,
@@ -345,30 +444,14 @@ const styles = StyleSheet.create({
   assistantMessageWrapper: {
     justifyContent: 'flex-start',
   },
-  assistantAvatar: {
+  avatarButton: {
     marginRight: 8,
     alignSelf: 'flex-end',
   },
-  smallAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  smallAvatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6C63FF',
+  messageContentWrapper: {
+    maxWidth: '75%',
   },
   messageBubble: {
-    maxWidth: '75%',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
@@ -395,6 +478,25 @@ const styles = StyleSheet.create({
   },
   assistantMessageText: {
     color: '#2D3436',
+  },
+  playButton: {
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  playButtonActive: {
+    backgroundColor: 'rgba(108, 99, 255, 0.2)',
+  },
+  playButtonText: {
+    fontSize: 12,
+    color: '#6C63FF',
+    fontWeight: '500',
+  },
+  playButtonTextActive: {
+    color: '#896BFF',
   },
   inputContainer: {
     paddingHorizontal: 20,

@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import { LLMClient, TTSClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
 import { TextDecoder } from "util";
 import type { Request, Response } from "express";
 
@@ -183,6 +183,37 @@ app.post('/api/v1/chat/invoke', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('LLM invoke error:', error);
     res.status(500).json({ error: 'Invoke error' });
+  }
+});
+
+// TTS 语音合成接口
+app.post('/api/v1/tts', async (req: Request, res: Response) => {
+  const { text, uid = 'xiaofang_user' } = req.body;
+
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+
+  try {
+    const config = new Config();
+    const customHeaders = HeaderUtils.extractForwardHeaders(headersToObject(req.headers as unknown as Record<string, string | string[] | undefined>));
+    const ttsClient = new TTSClient(config, customHeaders);
+
+    const response = await ttsClient.synthesize({
+      uid,
+      text,
+      speaker: 'zh_female_xueayi_saturn_bigtts', // 童声，适合教育场景
+      audioFormat: 'mp3',
+      speechRate: -10, // 稍慢的语速，适合小朋友
+    });
+
+    res.json({
+      audioUri: response.audioUri,
+      audioSize: response.audioSize,
+    });
+  } catch (error) {
+    console.error('TTS error:', error);
+    res.status(500).json({ error: 'TTS error' });
   }
 });
 

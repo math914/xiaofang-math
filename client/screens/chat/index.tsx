@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import RNSSE from 'react-native-sse';
 import { CubeAvatar, BigCubeAvatar } from '@/components/CubeAvatar';
@@ -44,10 +45,12 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const backendUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL || 'http://localhost:9091';
   const sseRef = useRef<RNSSE | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   // 清理资源
   useEffect(() => {
@@ -123,6 +126,70 @@ export default function ChatScreen() {
       setIsSpeaking(false);
     }
   }, [backendUrl, playingMessageIndex]);
+
+  // 语音输入
+  const handleVoiceInput = useCallback(async () => {
+    try {
+      // 请求麦克风权限
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('需要麦克风权限才能使用语音输入哦~');
+        return;
+      }
+
+      if (isRecording) {
+        // 停止录音
+        if (recordingRef.current) {
+          await recordingRef.current.stopAndUnloadAsync();
+          const uri = recordingRef.current.getURI();
+          recordingRef.current = null;
+          setIsRecording(false);
+
+          if (uri) {
+            // 调用 ASR API
+            const formData = new FormData();
+            formData.append('file', {
+              uri,
+              type: 'audio/m4a',
+              name: 'recording.m4a',
+            } as any);
+
+            const response = await fetch(`${backendUrl}/api/v1/asr`, {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (response.ok) {
+              const { text } = await response.json();
+              if (text) {
+                setInputText((prev) => prev + text);
+              } else {
+                alert('没听清楚，请再说一次~');
+              }
+            } else {
+              alert('语音识别失败，请重试~');
+            }
+          }
+        }
+      } else {
+        // 开始录音
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        const recording = new Audio.Recording();
+        await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+        await recording.startAsync();
+        recordingRef.current = recording;
+        setIsRecording(true);
+      }
+    } catch (error) {
+      console.error('Recording error:', error);
+      setIsRecording(false);
+      alert('录音出错了，请重试~');
+    }
+  }, [isRecording, backendUrl]);
 
   // 发送消息
   const handleSend = async () => {
@@ -241,7 +308,7 @@ export default function ChatScreen() {
             <BigCubeAvatar isSpeaking={isSpeaking} />
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>小方老师</Text>
-              <Text style={styles.headerSubtitle}>立方王国 · 六年级数学</Text>
+              <Text style={styles.headerSubtitle}>图形学习小帮手</Text>
             </View>
             {isSpeaking && (
               <View style={styles.speakingIndicator}>
@@ -337,11 +404,22 @@ export default function ChatScreen() {
         {/* 输入区域 */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
+            <TouchableOpacity
+              style={[styles.micButton, isRecording && styles.micButtonRecording]}
+              onPress={handleVoiceInput}
+              disabled={isLoading}
+            >
+              <MaterialCommunityIcons
+                name={isRecording ? 'stop' : 'microphone'}
+                size={22}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
             <TextInput
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="输入你的回答..."
+              placeholder="输入或点击麦克风说话..."
               placeholderTextColor="#B2BEC3"
               multiline
               maxLength={500}
@@ -504,9 +582,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     backgroundColor: '#E8E8EB',
     borderRadius: 24,
-    paddingLeft: 16,
+    paddingLeft: 8,
     paddingRight: 6,
     paddingVertical: 6,
+  },
+  micButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#6C63FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  micButtonRecording: {
+    backgroundColor: '#FF6B6B',
   },
   textInput: {
     flex: 1,

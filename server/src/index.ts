@@ -1,11 +1,18 @@
 import express from "express";
 import cors from "cors";
-import { LLMClient, TTSClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import multer from "multer";
+import { LLMClient, TTSClient, Config, HeaderUtils, ASRClient } from "coze-coding-dev-sdk";
 import { TextDecoder } from "util";
 import type { Request, Response } from "express";
 
 const app = express();
 const port = process.env.PORT || 9091;
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // Middleware
 app.use(cors());
@@ -214,6 +221,35 @@ app.post('/api/v1/tts', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('TTS error:', error);
     res.status(500).json({ error: 'TTS error' });
+  }
+});
+
+// ASR 语音识别接口
+app.post('/api/v1/asr', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: 'No audio file' });
+    }
+
+    const config = new Config();
+    const customHeaders = HeaderUtils.extractForwardHeaders(headersToObject(req.headers as unknown as Record<string, string | string[] | undefined>));
+    const asrClient = new ASRClient(config, customHeaders);
+
+    // 将文件 buffer 转为 base64
+    const base64Data = file.buffer.toString('base64');
+
+    const response = await asrClient.recognize({
+      base64Data,
+    });
+
+    res.json({
+      text: response.text,
+      duration: response.duration,
+    });
+  } catch (error) {
+    console.error('ASR error:', error);
+    res.status(500).json({ error: 'ASR error' });
   }
 });
 

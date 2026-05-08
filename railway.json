@@ -3,7 +3,8 @@
   "build": {
     "builder": "NIXPACKS",
     "nixpacks": {
-      "installCommand": "pnpm install --frozen-lockfile",
+      "provider": "nodejs",
+      "installCommand": "pnpm install",
       "buildCommand": "pnpm run build",
       "startCommand": "pnpm run start"
     }

@@ -4,6 +4,10 @@ import multer from "multer";
 import { LLMClient, TTSClient, Config, HeaderUtils, ASRClient } from "coze-coding-dev-sdk";
 import { TextDecoder } from "util";
 import type { Request, Response } from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const port = process.env.PORT || 9091;
@@ -25,7 +29,11 @@ app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// 小方智能体的系统提示词
+// Serve static files from client build in production
+const clientDistPath = path.join(__dirname, '..', '..', 'client', '.output', 'public');
+app.use(express.static(clientDistPath));
+
+// API routes (must be before static files catch-all)
 const SYSTEM_PROMPT = `你是"小方"，一个住在立方王国的小学数学老师，专门教六年级立体图形。你是一个正方体形状的小人，有着可爱的表情。
 
 ## 核心教学原则
@@ -255,4 +263,13 @@ app.post('/api/v1/asr', upload.single('file'), async (req: Request, res: Respons
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}/`);
+});
+
+// Serve frontend for all non-API routes (SPA fallback)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
 });
